@@ -11,9 +11,9 @@ async function startServer() {
   app.use(express.json());
 
   // Initialize Supabase client
-  const supabaseUrl = process.env.SUPABASE_URL || '';
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-  
+  const supabaseUrl = process.env.VITE_SUPABASE_URL || '';
+  const supabaseKey = process.env.VITE_SUPABASE_SERVICE_ROLE_KEY || '';
+
   let supabase: ReturnType<typeof createClient> | null = null;
   if (supabaseUrl && supabaseKey) {
     supabase = createClient(supabaseUrl, supabaseKey);
@@ -172,26 +172,26 @@ async function startServer() {
         .select()
         .single();
       if (error) throw error;
-      
+
       if (payload.team_id) {
         const teamPayload = {
-            played: payload.played,
-            wins: payload.wins,
-            draws: payload.draws,
-            losses: payload.losses,
-            goals_for: payload.goals_for,
-            goals_against: payload.goals_against,
-            goal_difference: payload.goal_difference,
-            points: payload.points
+          played: payload.played,
+          wins: payload.wins,
+          draws: payload.draws,
+          losses: payload.losses,
+          goals_for: payload.goals_for,
+          goals_against: payload.goals_against,
+          goal_difference: payload.goal_difference,
+          points: payload.points
         };
         const { error: teamError } = await getSupabase()
           .from("teams")
           .update(teamPayload)
           .eq("id", payload.team_id);
-          
+
         if (teamError) console.error("Error updating team:", teamError);
       }
-      
+
       res.json(data);
     } catch (err: any) {
       res.status(500).json({ error: err.message });
@@ -226,13 +226,13 @@ async function startServer() {
       const { season_id } = req.query;
       let query = getSupabase()
         .from("top_scorers")
-        .select("*, players(*, player_profile(*))") 
+        .select("*, players(*, player_profile(*))")
         .order("rank", { ascending: true });
-        
+
       if (season_id) {
         query = query.eq("season_id", season_id as string);
       }
-      
+
       const { data, error } = await query;
       if (error) throw error;
       res.json(data);
@@ -257,12 +257,12 @@ async function startServer() {
         const { error: playerError } = await getSupabase()
           .from("players")
           .update({
-             goals: payload.goals,
-             assists: payload.assists
+            goals: payload.goals,
+            assists: payload.assists
           })
           .eq("id", payload.player_id)
           .eq("season_id", payload.season_id);
-          
+
         if (playerError) console.error("Error updating player:", playerError);
       }
 
@@ -287,12 +287,12 @@ async function startServer() {
         const { error: playerError } = await getSupabase()
           .from("players")
           .update({
-             goals: payload.goals,
-             assists: payload.assists
+            goals: payload.goals,
+            assists: payload.assists
           })
           .eq("id", payload.player_id)
           .eq("season_id", payload.season_id);
-          
+
         if (playerError) console.error("Error updating player:", playerError);
       }
 
@@ -308,9 +308,9 @@ async function startServer() {
       const { season_id } = req.query;
       let query = getSupabase()
         .from("golden_gloves")
-        .select("*, players(*, player_profile(*))") 
+        .select("*, players(*, player_profile(*))")
         .order("rank", { ascending: true });
-        
+
       if (season_id) {
         query = query.eq("season_id", season_id as string);
       }
@@ -339,12 +339,12 @@ async function startServer() {
         const { error: playerError } = await getSupabase()
           .from("players")
           .update({
-             saves: payload.saves,
-             clean_sheets: payload.clean_sheets
+            saves: payload.saves,
+            clean_sheets: payload.clean_sheets
           })
           .eq("id", payload.player_id)
           .eq("season_id", payload.season_id);
-          
+
         if (playerError) console.error("Error updating player:", playerError);
       }
 
@@ -369,12 +369,12 @@ async function startServer() {
         const { error: playerError } = await getSupabase()
           .from("players")
           .update({
-             saves: payload.saves,
-             clean_sheets: payload.clean_sheets
+            saves: payload.saves,
+            clean_sheets: payload.clean_sheets
           })
           .eq("id", payload.player_id)
           .eq("season_id", payload.season_id);
-          
+
         if (playerError) console.error("Error updating player:", playerError);
       }
 
