@@ -1,0 +1,6 @@
+{
+  "name": "SoccerQ Admin",
+  "description": "Football tournament stats and results management dashboard powered by Supabase.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
