@@ -208,9 +208,19 @@ app.get("/api/teams", async (req, res) => {
 // Get players
 app.get("/api/players", async (req, res) => {
   try {
-    const { data, error } = await getSupabase().from("player_profile").select("*");
-    if (error) throw error;
-    res.json(data);
+    const { season_id } = req.query;
+    if (season_id) {
+      const { data, error } = await getSupabase()
+        .from("players")
+        .select("*, player_profile(*)")
+        .eq("season_id", season_id as string);
+      if (error) throw error;
+      res.json(data);
+    } else {
+      const { data, error } = await getSupabase().from("player_profile").select("*");
+      if (error) throw error;
+      res.json(data);
+    }
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -268,10 +278,38 @@ app.put("/api/top-scorers/:id", async (req, res) => {
   }
 });
 
+app.get("/api/season-players", async (req, res) => {
+  try {
+    const { season_id } = req.query;
+    if (!season_id) {
+      return res.status(400).json({ error: "season_id is required" });
+    }
+    const { data, error } = await getSupabase()
+      .from("players")
+      .select("*, player_profile(*)")
+      .eq("season_id", season_id as string);
+    if (error) throw error;
+    res.json(data);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Create Top Scorer
 app.post("/api/top-scorers", async (req, res) => {
   try {
     const payload = req.body as any;
+
+    // Fetch max ID to bypass sequence mismatch issues
+    const { data: maxIdData } = await getSupabase()
+      .from("top_scorers")
+      .select("id")
+      .order("id", { ascending: false })
+      .limit(1);
+
+    const nextId = (maxIdData && maxIdData.length > 0) ? maxIdData[0].id + 1 : 1;
+    payload.id = nextId;
+
     const { data, error } = await getSupabase()
       .from("top_scorers")
       .insert(payload)
@@ -354,6 +392,17 @@ app.put("/api/golden-gloves/:id", async (req, res) => {
 app.post("/api/golden-gloves", async (req, res) => {
   try {
     const payload = req.body as any;
+
+    // Fetch max ID to bypass sequence mismatch issues
+    const { data: maxIdData } = await getSupabase()
+      .from("golden_gloves")
+      .select("id")
+      .order("id", { ascending: false })
+      .limit(1);
+
+    const nextId = (maxIdData && maxIdData.length > 0) ? maxIdData[0].id + 1 : 1;
+    payload.id = nextId;
+
     const { data, error } = await getSupabase()
       .from("golden_gloves")
       .insert(payload)
