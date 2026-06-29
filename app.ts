@@ -23,6 +23,30 @@ const getSupabase = () => {
   return supabase as any;
 };
 
+// Authentication middleware to secure all /api/ endpoints
+app.use(async (req, res, next) => {
+  if (!req.path.startsWith("/api/")) {
+    return next();
+  }
+
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "Unauthorized: Missing or invalid token" });
+  }
+
+  const token = authHeader.split(" ")[1];
+  try {
+    const { data: { user }, error } = await getSupabase().auth.getUser(token);
+    if (error || !user) {
+      return res.status(401).json({ error: "Unauthorized: Invalid session" });
+    }
+    (req as any).user = user;
+    next();
+  } catch (err: any) {
+    return res.status(401).json({ error: "Unauthorized: " + err.message });
+  }
+});
+
 // --- API ROUTES ---
 
 // Get all seasons

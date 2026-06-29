@@ -1,6 +1,9 @@
 import { BrowserRouter, Routes, Route, Link, Outlet, useLocation } from "react-router-dom";
 import { Menu, X } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { User } from "@supabase/supabase-js";
+import { supabase } from "./supabaseClient";
+import LoginView from "./views/LoginView";
 import MatchesView from "./views/MatchesView";
 import MatchDetailView from "./views/MatchDetailView";
 import StandingsView from "./views/StandingsView";
@@ -13,6 +16,13 @@ function Layout() {
   const location = useLocation();
   const { seasons, selectedSeason, setSelectedSeason } = useSeason();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [userEmail, setUserEmail] = useState<string>("");
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user?.email) setUserEmail(user.email);
+    });
+  }, []);
   
   const getLinkClass = (path: string) => {
     const isActive = location.pathname === path || (path !== "/" && location.pathname.startsWith(path));
@@ -73,8 +83,19 @@ function Layout() {
             <span className="text-sm font-medium">Players</span>
           </Link>
         </nav>
-        <div className="p-6 border-t border-stone-800 text-[10px] text-stone-600 uppercase tracking-widest hidden md:block">
-          Supabase Connected
+        <div className="p-6 border-t border-stone-800 flex flex-col gap-3 mt-auto">
+          <div className="flex flex-col gap-0.5 min-w-0">
+            <span className="text-[9px] uppercase tracking-wider text-stone-500 font-semibold">Logged in as</span>
+            <span className="text-xs text-stone-300 truncate" title={userEmail}>
+              {userEmail || "Loading..."}
+            </span>
+          </div>
+          <button 
+            onClick={() => supabase.auth.signOut()} 
+            className="w-full text-center py-2 px-3 bg-stone-900 border border-stone-800 hover:border-red-950 hover:bg-red-950/20 hover:text-red-400 rounded text-[11px] font-semibold transition-all duration-200 cursor-pointer active:scale-[0.98]"
+          >
+            Sign Out
+          </button>
         </div>
       </aside>
 
@@ -87,6 +108,42 @@ function Layout() {
 }
 
 export default function App() {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Check active session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+
+    // Listen to auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-[#050505] text-stone-200 font-sans">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="w-10 h-10 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs uppercase tracking-widest text-stone-500 animate-pulse">Loading Soccer-Q Admin...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <LoginView />;
+  }
+
   return (
     <SeasonProvider>
       <BrowserRouter>
