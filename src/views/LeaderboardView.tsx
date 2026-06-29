@@ -9,7 +9,7 @@ interface PlayerOption {
   };
 }
 
-export default function StatsView() {
+export default function LeaderboardView() {
   const [topScorers, setTopScorers] = useState<TopScorer[]>([]);
   const [goldenGloves, setGoldenGloves] = useState<GoldenGlove[]>([]);
   const [players, setPlayers] = useState<Record<string, PlayerOption>>({});
@@ -163,14 +163,14 @@ export default function StatsView() {
     }
   };
 
-  if (loading) return <div className="p-4 md:p-8 text-stone-500 text-sm">Loading stats...</div>;
+  if (loading) return <div className="p-4 md:p-8 text-stone-500 text-sm">Loading leaderboard...</div>;
 
   return (
     <div className="flex-1 p-4 md:p-8 overflow-y-auto">
       <section className="flex flex-col space-y-6 md:space-y-8 max-w-6xl mx-auto">
         <header className="mb-2 md:mb-4">
-          <h1 className="text-xl md:text-2xl font-serif italic text-white tracking-tight">Player Stats</h1>
-          <p className="text-[10px] uppercase tracking-[0.2em] text-stone-500 mt-1">Manage top scorers and golden gloves rankings.</p>
+          <h1 className="text-xl md:text-2xl font-serif italic text-white tracking-tight">Leaderboard</h1>
+          <p className="text-[10px] uppercase tracking-[0.2em] text-stone-500 mt-1">View and manage top scorers and golden gloves rankings.</p>
         </header>
 
         {/* Top Scorers */}
@@ -194,7 +194,7 @@ export default function StatsView() {
               <thead className="text-[10px] uppercase text-stone-600 border-b border-stone-800">
                 <tr>
                   <th className="px-5 py-4 w-20">Rank</th>
-                  <th className="px-5 py-4">Player ID</th>
+                  <th className="px-5 py-4">Player</th>
                   <th className="px-5 py-4 w-24 text-center">Goals</th>
                   <th className="px-5 py-4 w-24 text-center">Assists</th>
                   <th className="px-5 py-4 w-24 text-right">Actions</th>
@@ -288,7 +288,7 @@ export default function StatsView() {
               <thead className="text-[10px] uppercase text-stone-600 border-b border-stone-800">
                 <tr>
                   <th className="px-5 py-4 w-20">Rank</th>
-                  <th className="px-5 py-4">Player ID</th>
+                  <th className="px-5 py-4">Player</th>
                   <th className="px-5 py-4 w-24 text-center">Clean Sheets</th>
                   <th className="px-5 py-4 w-24 text-center">Saves</th>
                   <th className="px-5 py-4 w-24 text-right">Actions</th>

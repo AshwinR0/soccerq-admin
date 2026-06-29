@@ -19,6 +19,7 @@ export interface Match {
   away_team?: Team;
   home_penalty_score?: number;
   away_penalty_score?: number;
+  stage?: string;
 }
 
 export interface PlayerProfile {
@@ -80,3 +81,21 @@ export interface GoldenGlove {
     player_profile?: PlayerProfile;
   };
 }
+
+export interface Player {
+  id: string;
+  season_id: string;
+  team_id: string;
+  player_profile_id: string;
+  goals: number;
+  assists: number;
+  saves: number;
+  clean_sheets: number;
+  appearances: number;
+  minutes_played: number;
+  yellow_cards: number;
+  red_cards: number;
+  player_profile?: PlayerProfile;
+  team?: Team;
+}
+

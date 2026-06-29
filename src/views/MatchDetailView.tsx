@@ -27,45 +27,53 @@ export default function MatchDetailView() {
   });
 
   useEffect(() => {
-    Promise.all([
-      fetch(`/api/matches/${id}`).then(res => res.json()),
-      fetch(`/api/matches/${id}/events`).then(res => res.json()),
-      fetch(`/api/players`).then(res => res.json())
-    ])
-    .then(([matchData, eventsData, playersData]) => {
-      // Check if the responses are what we expect
-      if (matchData && !matchData.error) {
-        setMatch(matchData);
-        setHomeScore(matchData.home_score !== null ? String(matchData.home_score) : "");
-        setAwayScore(matchData.away_score !== null ? String(matchData.away_score) : "");
-        setStatus(matchData.status || "Upcoming");
-        
-        // Default new event team to home team
-        if (matchData.home_team_id) {
-          setNewEvent(prev => ({ ...prev, team_id: matchData.home_team_id }));
+    setLoading(true);
+    fetch(`/api/matches/${id}`)
+      .then(res => res.json())
+      .then(matchData => {
+        if (matchData && !matchData.error) {
+          setMatch(matchData);
+          setHomeScore(matchData.home_score !== null ? String(matchData.home_score) : "");
+          setAwayScore(matchData.away_score !== null ? String(matchData.away_score) : "");
+          setStatus(matchData.status || "Upcoming");
+          
+          if (matchData.home_team_id) {
+            setNewEvent(prev => ({ ...prev, team_id: matchData.home_team_id }));
+          }
+
+          // Fetch events and players of this season in parallel
+          return Promise.all([
+            fetch(`/api/matches/${id}/events`).then(res => res.json()),
+            fetch(`/api/season-players?season_id=${matchData.season_id}`).then(res => res.json())
+          ]);
+        } else {
+          throw new Error("Match not found");
         }
-      } else {
-        console.error("Failed to load match:", matchData);
-        setMatch(null);
-      }
+      })
+      .then(([eventsData, playersData]) => {
+        if (Array.isArray(eventsData)) {
+          setEvents(eventsData);
+        } else {
+          console.error("Failed to load events:", eventsData);
+          setEvents([]);
+        }
 
-      if (Array.isArray(eventsData)) {
-        setEvents(eventsData);
-      } else {
-        console.error("Failed to load events:", eventsData);
-        setEvents([]);
-      }
-
-      if (Array.isArray(playersData)) {
-        setPlayers(playersData);
-      } else {
-        console.error("Failed to load players:", playersData);
-        setPlayers([]);
-      }
-      
-      setLoading(false);
-    })
-    .catch(console.error);
+        if (Array.isArray(playersData)) {
+          // Extract player_profile from season players data
+          const seasonProfiles = playersData
+            .map((p: any) => p.player_profile)
+            .filter(Boolean);
+          setPlayers(seasonProfiles);
+        } else {
+          console.error("Failed to load players:", playersData);
+          setPlayers([]);
+        }
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error(err);
+        setLoading(false);
+      });
   }, [id]);
 
   const [eventError, setEventError] = useState("");
@@ -248,9 +256,12 @@ export default function MatchDetailView() {
                     </select>
                     <select className="w-24 bg-black border border-stone-600 rounded p-1 text-stone-200" value={editEventForm.event || ''} onChange={e => setEditEventForm({...editEventForm, event: e.target.value})}>
                       <option value="Goal">Goal</option>
-                      <option value="Yellow Card">Yellow</option>
-                      <option value="Red Card">Red</option>
-                      <option value="Substitution">Sub</option>
+                      <option value="Yellow Card">Yellow Card</option>
+                      <option value="Red Card">Red Card</option>
+                      <option value="Own Goal">Own Goal</option>
+                      <option value="Penalty Miss">Penalty Miss</option>
+                      <option value="Penalty Goal">Penalty Goal</option>
+                      <option value="Substitution">Substitution</option>
                     </select>
                     <select className="w-24 bg-black border border-stone-600 rounded p-1 text-stone-200" value={editEventForm.team_id || ''} onChange={e => setEditEventForm({...editEventForm, team_id: e.target.value})}>
                       <option value={match.home_team_id}>{match.home_team?.name || 'Home'}</option>
@@ -279,9 +290,9 @@ export default function MatchDetailView() {
                   )}
                 </span>
                 <span className={clsx("px-2 py-0.5 rounded text-[10px] uppercase mr-2 md:mr-3 whitespace-nowrap", 
-                  ev.event === 'goal' ? 'bg-amber-900/30 text-amber-400' :
-                  ev.event === 'yellow_card' ? 'bg-yellow-900/30 text-yellow-400' :
-                  ev.event === 'red_card' ? 'bg-red-900/30 text-red-400' : 'bg-stone-800 text-stone-300'
+                  ['goal', 'own goal', 'penalty goal'].includes(ev.event.toLowerCase()) ? 'bg-amber-900/30 text-amber-400' :
+                  ['yellow card', 'yellow_card'].includes(ev.event.toLowerCase()) ? 'bg-yellow-900/30 text-yellow-400' :
+                  ['red card', 'red_card'].includes(ev.event.toLowerCase()) ? 'bg-red-900/30 text-red-400' : 'bg-stone-800 text-stone-300'
                 )}>
                   {ev.event.replace('_', ' ')}
                 </span>
@@ -321,6 +332,9 @@ export default function MatchDetailView() {
                 <option value="Goal">Goal</option>
                 <option value="Yellow Card">Yellow Card</option>
                 <option value="Red Card">Red Card</option>
+                <option value="Own Goal">Own Goal</option>
+                <option value="Penalty Miss">Penalty Miss</option>
+                <option value="Penalty Goal">Penalty Goal</option>
                 <option value="Substitution">Substitution</option>
               </select>
             </div>
@@ -350,7 +364,7 @@ export default function MatchDetailView() {
             </div>
           </div>
           
-          {newEvent.event === 'goal' && (
+          {newEvent.event === 'Goal' && (
             <div className="grid grid-cols-1 gap-4 items-end">
                <div className="col-span-1">
                 <label className="block text-[10px] uppercase text-stone-500 mb-1">Assist (Optional)</label>

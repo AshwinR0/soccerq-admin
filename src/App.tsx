@@ -4,7 +4,9 @@ import { useState } from "react";
 import MatchesView from "./views/MatchesView";
 import MatchDetailView from "./views/MatchDetailView";
 import StandingsView from "./views/StandingsView";
-import StatsView from "./views/StatsView";
+import LeaderboardView from "./views/LeaderboardView";
+import PlayersView from "./views/PlayersView";
+import TournamentsView from "./views/TournamentsView";
 import { SeasonProvider, useSeason } from "./SeasonContext";
 
 function Layout() {
@@ -58,11 +60,17 @@ function Layout() {
           <Link to="/" onClick={() => setSidebarOpen(false)} className={getLinkClass("/")}>
             <span className="text-sm font-medium">Match Updates</span>
           </Link>
+          <Link to="/tournaments" onClick={() => setSidebarOpen(false)} className={getLinkClass("/tournaments")}>
+            <span className="text-sm font-medium">Tournaments</span>
+          </Link>
           <Link to="/standings" onClick={() => setSidebarOpen(false)} className={getLinkClass("/standings")}>
             <span className="text-sm font-medium">League Standings</span>
           </Link>
-          <Link to="/stats" onClick={() => setSidebarOpen(false)} className={getLinkClass("/stats")}>
-            <span className="text-sm font-medium">Player Stats</span>
+          <Link to="/leaderboard" onClick={() => setSidebarOpen(false)} className={getLinkClass("/leaderboard")}>
+            <span className="text-sm font-medium">Leaderboard</span>
+          </Link>
+          <Link to="/players" onClick={() => setSidebarOpen(false)} className={getLinkClass("/players")}>
+            <span className="text-sm font-medium">Players</span>
           </Link>
         </nav>
         <div className="p-6 border-t border-stone-800 text-[10px] text-stone-600 uppercase tracking-widest hidden md:block">
@@ -87,7 +95,9 @@ export default function App() {
             <Route index element={<MatchesView />} />
             <Route path="matches/:id" element={<MatchDetailView />} />
             <Route path="standings" element={<StandingsView />} />
-            <Route path="stats" element={<StatsView />} />
+            <Route path="leaderboard" element={<LeaderboardView />} />
+            <Route path="players" element={<PlayersView />} />
+            <Route path="tournaments" element={<TournamentsView />} />
           </Route>
         </Routes>
       </BrowserRouter>

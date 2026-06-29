@@ -44,7 +44,10 @@ app.get("/api/matches", async (req, res) => {
     if (season_id) {
       query = query.eq("season_id", season_id as string);
     }
-    query = query.order("match_date", { ascending: false });
+    query = query
+      .order("match_date", { ascending: false })
+      .order("match_time", { ascending: false })
+      .order("id", { ascending: false });
     const { data, error } = await query;
     if (error) throw error;
     res.json(data);
@@ -212,7 +215,7 @@ app.get("/api/players", async (req, res) => {
     if (season_id) {
       const { data, error } = await getSupabase()
         .from("players")
-        .select("*, player_profile(*)")
+        .select("*, player_profile(*), team:teams!team_id(*)")
         .eq("season_id", season_id as string);
       if (error) throw error;
       res.json(data);
@@ -225,6 +228,46 @@ app.get("/api/players", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// Update player statistics
+app.put("/api/players/:id", async (req, res) => {
+  try {
+    const {
+      goals,
+      assists,
+      saves,
+      clean_sheets,
+      appearances,
+      minutes_played,
+      yellow_cards,
+      red_cards,
+      team_id
+    } = req.body;
+
+    const { data, error } = await getSupabase()
+      .from("players")
+      .update({
+        goals,
+        assists,
+        saves,
+        clean_sheets,
+        appearances,
+        minutes_played,
+        yellow_cards,
+        red_cards,
+        team_id
+      })
+      .eq("id", req.params.id)
+      .select("*, player_profile(*), team:teams!team_id(*)")
+      .single();
+
+    if (error) throw error;
+    res.json(data);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 
 // Get Top Scorers
 app.get("/api/top-scorers", async (req, res) => {
@@ -429,4 +472,223 @@ app.post("/api/golden-gloves", async (req, res) => {
   }
 });
 
+// --- NEW CRUD ENDPOINTS ---
+
+// Create Season
+app.post("/api/seasons", async (req, res) => {
+  try {
+    let seasonId = req.body.id;
+    if (!seasonId) {
+      const { data: maxSeasons } = await getSupabase().from("seasons").select("id");
+      let maxNum = 0;
+      if (Array.isArray(maxSeasons)) {
+        maxSeasons.forEach((s: any) => {
+          const m = s.id.match(/^S(\d+)$/);
+          if (m) {
+            const num = parseInt(m[1], 10);
+            if (num > maxNum) maxNum = num;
+          }
+        });
+      }
+      seasonId = "S" + String(maxNum + 1).padStart(3, "0");
+    }
+
+    const { data, error } = await getSupabase()
+      .from("seasons")
+      .insert({ ...req.body, id: seasonId })
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.json(data);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Update Season
+app.put("/api/seasons/:id", async (req, res) => {
+  try {
+    const { data, error } = await getSupabase()
+      .from("seasons")
+      .update(req.body)
+      .eq("id", req.params.id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.json(data);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Delete Season
+app.delete("/api/seasons/:id", async (req, res) => {
+  try {
+    const { error } = await getSupabase()
+      .from("seasons")
+      .delete()
+      .eq("id", req.params.id);
+
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Create Team
+app.post("/api/teams", async (req, res) => {
+  try {
+    let teamId = req.body.id;
+    if (!teamId) {
+      const { data: maxTeams } = await getSupabase().from("teams").select("id");
+      let maxNum = 0;
+      if (Array.isArray(maxTeams)) {
+        maxTeams.forEach((t: any) => {
+          const m = t.id.match(/^T(\d+)$/);
+          if (m) {
+            const num = parseInt(m[1], 10);
+            if (num > maxNum) maxNum = num;
+          }
+        });
+      }
+      teamId = "T" + String(maxNum + 1).padStart(3, "0");
+    }
+
+    const teamPayload = {
+      id: teamId,
+      season_id: req.body.season_id,
+      name: req.body.name,
+      short_name: req.body.short_name || null,
+      coach: req.body.coach || null,
+      stadium: req.body.stadium || null,
+      founded: req.body.founded || null,
+      logo_url: req.body.logo_url || '/api/placeholder/100/100',
+      colors: req.body.colors || { primary: '#60a5fa', secondary: '#1e3a8a' },
+      played: 0,
+      wins: 0,
+      draws: 0,
+      losses: 0,
+      goals_for: 0,
+      goals_against: 0,
+      goal_difference: 0,
+      points: 0
+    };
+
+    const { data, error } = await getSupabase()
+      .from("teams")
+      .insert(teamPayload)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    // Automatically create standing row for this team in this season
+    const { data: maxStandings } = await getSupabase()
+      .from("standings")
+      .select("id")
+      .order("id", { ascending: false })
+      .limit(1);
+    const nextStandingId = (maxStandings && maxStandings.length > 0) ? maxStandings[0].id + 1 : 1;
+
+    const { count } = await getSupabase()
+      .from("standings")
+      .select("*", { count: "exact", head: true })
+      .eq("season_id", req.body.season_id);
+    const nextPosition = (count || 0) + 1;
+
+    const { error: standingError } = await getSupabase()
+      .from("standings")
+      .insert({
+        id: nextStandingId,
+        season_id: req.body.season_id,
+        team_id: teamId,
+        position: nextPosition,
+        played: 0,
+        wins: 0,
+        draws: 0,
+        losses: 0,
+        goals_for: 0,
+        goals_against: 0,
+        goal_difference: 0,
+        points: 0
+      });
+
+    if (standingError) {
+      console.error("Error creating standing row for new team:", standingError);
+    }
+
+    res.json(data);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Update Team
+app.put("/api/teams/:id", async (req, res) => {
+  try {
+    const { data, error } = await getSupabase()
+      .from("teams")
+      .update(req.body)
+      .eq("id", req.params.id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.json(data);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Delete Team
+app.delete("/api/teams/:id", async (req, res) => {
+  try {
+    // Delete standings row first to prevent foreign key errors
+    await getSupabase().from("standings").delete().eq("team_id", req.params.id);
+
+    const { error } = await getSupabase()
+      .from("teams")
+      .delete()
+      .eq("id", req.params.id);
+
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Create Match
+app.post("/api/matches", async (req, res) => {
+  try {
+    const { data: maxMatches } = await getSupabase().from("matches").select("id");
+    let maxNum = 0;
+    if (Array.isArray(maxMatches)) {
+      maxMatches.forEach((m: any) => {
+        const matchRes = m.id.match(/^M(\d+)$/);
+        if (matchRes) {
+          const num = parseInt(matchRes[1], 10);
+          if (num > maxNum) maxNum = num;
+        }
+      });
+    }
+    const matchId = "M" + String(maxNum + 1).padStart(3, "0");
+
+    const { data, error } = await getSupabase()
+      .from("matches")
+      .insert({ ...req.body, id: matchId })
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.json(data);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default app;
+
